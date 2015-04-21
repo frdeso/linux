@@ -2197,6 +2197,7 @@ static u64 vmx_read_tsc_offset(struct kvm_vcpu *vcpu)
  */
 static void vmx_write_tsc_offset(struct kvm_vcpu *vcpu, u64 offset)
 {
+	printk("freezer offset :%llu - %s\n", offset, __func__);
 	if (is_guest_mode(vcpu)) {
 		/*
 		 * We're here if L1 chose not to trap WRMSR to TSC. According
@@ -2222,6 +2223,7 @@ static void vmx_adjust_tsc_offset(struct kvm_vcpu *vcpu, s64 adjustment, bool ho
 {
 	u64 offset = vmcs_read64(TSC_OFFSET);
 
+	printk("freezer offset :%llu, adju: %llu - %s\n", offset,adjustment, __func__);
 	vmcs_write64(TSC_OFFSET, offset + adjustment);
 	if (is_guest_mode(vcpu)) {
 		/* Even when running L2, the adjustment needs to apply to L1 */
@@ -4480,7 +4482,8 @@ static int vmx_vcpu_setup(struct vcpu_vmx *vmx)
 		/* Keep arch.pat sync with GUEST_IA32_PAT */
 		vmx->vcpu.arch.pat = host_pat;
 	}
-
+	vmx->vcpu.arch.freezer_drift = 0;
+	printk("Freezer: Initializing freezer_drift to %lld\n", vmx->vcpu.arch.freezer_drift );
 	for (i = 0; i < ARRAY_SIZE(vmx_msr_index); ++i) {
 		u32 index = vmx_msr_index[i];
 		u32 data_low, data_high;

@@ -428,6 +428,7 @@ struct kvm_vcpu_arch {
 
 	gpa_t time;
 	struct pvclock_vcpu_time_info hv_clock;
+	s64 freezer_drift;
 	unsigned int hw_tsc_khz;
 	struct gfn_to_hva_cache pv_time;
 	bool pv_time_enabled;

@@ -2065,7 +2065,13 @@ static long kvm_vcpu_ioctl(struct file *filp,
 		r = -EINVAL;
 		if (arg)
 			goto out;
+		trace_kvm_userspace_entry(1337);
 		r = kvm_arch_vcpu_ioctl_run(vcpu, vcpu->run);
+
+		//vcpu->arch.freezer_drift -= 1000000;
+		//vcpu->kvm->arch.kvmclock_offset = vcpu->arch.freezer_drift; 
+		//kvm_gen_update_masterclock(vcpu->kvm);
+
 		trace_kvm_userspace_exit(vcpu->run->exit_reason, r);
 		break;
 	case KVM_GET_REGS: {

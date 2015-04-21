@@ -1059,13 +1059,13 @@ struct pvclock_gtod_data {
 
 static struct pvclock_gtod_data pvclock_gtod_data;
 
+static u64 a = 10000000;
 static void update_pvclock_gtod(struct timekeeper *tk)
 {
 	struct pvclock_gtod_data *vdata = &pvclock_gtod_data;
 	u64 boot_ns;
-
 	boot_ns = ktime_to_ns(ktime_add(tk->tkr.base_mono, tk->offs_boot));
-
+//	printk("freezer: %s %llu\n", __func__,a);
 	write_seqcount_begin(&vdata->seq);
 
 	/* copy pvclock gtod data */
@@ -1090,6 +1090,7 @@ static void kvm_write_wall_clock(struct kvm *kvm, gpa_t wall_clock)
 	struct pvclock_wall_clock wc;
 	struct timespec boot;
 
+	printk("%s\n", __func__);
 	if (!wall_clock)
 		return;
 
@@ -1281,6 +1282,7 @@ void kvm_write_tsc(struct kvm_vcpu *vcpu, struct msr_data *msr)
 	ns = get_kernel_ns();
 	elapsed = ns - kvm->arch.last_tsc_nsec;
 
+	printk("clock %s\n", __func__);
 	if (vcpu->arch.virtual_tsc_khz) {
 		int faulted = 0;
 
@@ -1355,6 +1357,8 @@ void kvm_write_tsc(struct kvm_vcpu *vcpu, struct msr_data *msr)
 		kvm->arch.cur_tsc_offset = offset;
 		matched = false;
 		pr_debug("kvm: new tsc generation %llu, clock %llu\n",
+			 kvm->arch.cur_tsc_generation, data);
+		printk("kvm: new tsc generation %llu, clock %llu\n",
 			 kvm->arch.cur_tsc_generation, data);
 	}
 
@@ -1532,6 +1536,7 @@ static void pvclock_update_vm_gtod_copy(struct kvm *kvm)
 	if (ka->use_master_clock)
 		atomic_set(&kvm_guest_has_master_clock, 1);
 
+	printk("%s\n", __func__);
 	vclock_mode = pvclock_gtod_data.clock.vclock_mode;
 	trace_kvm_update_master_clock(ka->use_master_clock, vclock_mode,
 					vcpus_matched);
@@ -1545,6 +1550,7 @@ static void kvm_gen_update_masterclock(struct kvm *kvm)
 	struct kvm_vcpu *vcpu;
 	struct kvm_arch *ka = &kvm->arch;
 
+	printk("%s\n", __func__);
 	spin_lock(&ka->pvclock_gtod_sync_lock);
 	kvm_make_mclock_inprogress_request(kvm);
 	/* no guest entries from this point */
@@ -1572,6 +1578,7 @@ static int kvm_guest_time_update(struct kvm_vcpu *v)
 	u8 pvclock_flags;
 	bool use_master_clock;
 
+	printk("freezer :%s\n", __func__);
 	kernel_ns = 0;
 	host_tsc = 0;
 
@@ -1634,7 +1641,9 @@ static int kvm_guest_time_update(struct kvm_vcpu *v)
 
 	/* With all the info we got, fill in the values */
 	vcpu->hv_clock.tsc_timestamp = tsc_timestamp;
+	//v->kvm->arch.kvmclock_offset -= 1000;
 	vcpu->hv_clock.system_time = kernel_ns + v->kvm->arch.kvmclock_offset;
+	printk("freezer: added drift %lld\n", v->arch.freezer_drift);
 	vcpu->last_guest_tsc = tsc_timestamp;
 
 	/*
@@ -1692,7 +1701,7 @@ static void kvmclock_update_fn(struct work_struct *work)
 					   kvmclock_update_work);
 	struct kvm *kvm = container_of(ka, struct kvm, arch);
 	struct kvm_vcpu *vcpu;
-
+	printk("%s\n", __func__);
 	kvm_for_each_vcpu(i, vcpu, kvm) {
 		kvm_make_request(KVM_REQ_CLOCK_UPDATE, vcpu);
 		kvm_vcpu_kick(vcpu);
@@ -1703,6 +1712,7 @@ static void kvm_gen_kvmclock_update(struct kvm_vcpu *v)
 {
 	struct kvm *kvm = v->kvm;
 
+	printk("%s\n", __func__);
 	kvm_make_request(KVM_REQ_CLOCK_UPDATE, v);
 	schedule_delayed_work(&kvm->arch.kvmclock_update_work,
 					KVMCLOCK_UPDATE_DELAY);
@@ -1717,6 +1727,7 @@ static void kvmclock_sync_fn(struct work_struct *work)
 					   kvmclock_sync_work);
 	struct kvm *kvm = container_of(ka, struct kvm, arch);
 
+	printk("%s\n", __func__);
 	schedule_delayed_work(&kvm->arch.kvmclock_update_work, 0);
 	schedule_delayed_work(&kvm->arch.kvmclock_sync_work,
 					KVMCLOCK_SYNC_PERIOD);
@@ -2542,10 +2553,12 @@ int kvm_get_msr_common(struct kvm_vcpu *vcpu, u32 msr, u64 *pdata)
 		break;
 	case MSR_KVM_WALL_CLOCK:
 	case MSR_KVM_WALL_CLOCK_NEW:
+		printk("%s kvm_wall_clock\n", __func__);
 		data = vcpu->kvm->arch.wall_clock;
 		break;
 	case MSR_KVM_SYSTEM_TIME:
 	case MSR_KVM_SYSTEM_TIME_NEW:
+		printk("%s kvm_system_time\n", __func__);
 		data = vcpu->arch.time;
 		break;
 	case MSR_KVM_ASYNC_PF_EN:
@@ -2880,6 +2893,7 @@ void kvm_arch_vcpu_load(struct kvm_vcpu *vcpu, int cpu)
 	if (unlikely(vcpu->arch.tsc_offset_adjustment)) {
 		adjust_tsc_offset_host(vcpu, vcpu->arch.tsc_offset_adjustment);
 		vcpu->arch.tsc_offset_adjustment = 0;
+		printk("clock %s offset_adjustment \n", __func__);
 		kvm_make_request(KVM_REQ_CLOCK_UPDATE, vcpu);
 	}
 
@@ -3216,6 +3230,7 @@ static int kvm_vcpu_ioctl_x86_set_xcrs(struct kvm_vcpu *vcpu,
  */
 static int kvm_set_guest_paused(struct kvm_vcpu *vcpu)
 {
+	printk("clock %s\n", __func__);
 	if (!vcpu->arch.pv_time_enabled)
 		return -EINVAL;
 	vcpu->arch.pvclock_set_guest_stopped_request = true;
@@ -3480,6 +3495,7 @@ long kvm_arch_vcpu_ioctl(struct file *filp,
 		goto out;
 	}
 	case KVM_KVMCLOCK_CTRL: {
+		printk("clock set guest_paused %s\n", __func__);
 		r = kvm_set_guest_paused(vcpu);
 		goto out;
 	}
@@ -3980,6 +3996,7 @@ long kvm_arch_vm_ioctl(struct file *filp,
 		local_irq_disable();
 		now_ns = get_kernel_ns();
 		delta = user_ns.clock - now_ns;
+		printk("kvm_set_clock %lld\n",delta);
 		local_irq_enable();
 		kvm->arch.kvmclock_offset = delta;
 		kvm_gen_update_masterclock(kvm);
@@ -3989,6 +4006,7 @@ long kvm_arch_vm_ioctl(struct file *filp,
 		struct kvm_clock_data user_ns;
 		u64 now_ns;
 
+		printk("kvm_get_clock %s\n", __func__);
 		local_irq_disable();
 		now_ns = get_kernel_ns();
 		user_ns.clock = kvm->arch.kvmclock_offset + now_ns;
@@ -5634,6 +5652,7 @@ static void pvclock_gtod_update_fn(struct work_struct *work)
 	struct kvm_vcpu *vcpu;
 	int i;
 
+	printk("%s\n", __func__);
 	spin_lock(&kvm_lock);
 	list_for_each_entry(kvm, &vm_list, vm_list)
 		kvm_for_each_vcpu(i, vcpu, kvm)
@@ -6105,6 +6124,7 @@ static int vcpu_enter_guest(struct kvm_vcpu *vcpu)
 			kvm_mmu_unload(vcpu);
 		if (kvm_check_request(KVM_REQ_MIGRATE_TIMER, vcpu))
 			__kvm_migrate_timers(vcpu);
+
 		if (kvm_check_request(KVM_REQ_MASTERCLOCK_UPDATE, vcpu))
 			kvm_gen_update_masterclock(vcpu->kvm);
 		if (kvm_check_request(KVM_REQ_GLOBAL_CLOCK_UPDATE, vcpu))
@@ -6114,6 +6134,7 @@ static int vcpu_enter_guest(struct kvm_vcpu *vcpu)
 			if (unlikely(r))
 				goto out;
 		}
+
 		if (kvm_check_request(KVM_REQ_MMU_SYNC, vcpu))
 			kvm_mmu_sync_roots(vcpu);
 		if (kvm_check_request(KVM_REQ_TLB_FLUSH, vcpu))
@@ -6229,8 +6250,8 @@ static int vcpu_enter_guest(struct kvm_vcpu *vcpu)
 	}
 
 	trace_kvm_entry(vcpu->vcpu_id);
-	kvm_x86_ops->run(vcpu);
 
+	kvm_x86_ops->run(vcpu);
 	/*
 	 * Do this here before restoring debug registers on the host.  And
 	 * since we do this before handling the vmexit, a DR access vmexit

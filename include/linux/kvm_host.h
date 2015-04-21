@@ -281,7 +281,7 @@ struct kvm_vcpu {
 	} spin_loop;
 #endif
 	bool preempted;
-	struct kvm_vcpu_arch arch;
+	struct kvm_vcpu_arch arch ;
 };
 
 static inline int kvm_vcpu_exiting_guest_mode(struct kvm_vcpu *vcpu)

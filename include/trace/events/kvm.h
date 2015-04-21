@@ -16,6 +16,17 @@
 	ERSN(NMI), ERSN(INTERNAL_ERROR), ERSN(OSI), ERSN(PAPR_HCALL),	\
 	ERSN(S390_UCONTROL), ERSN(WATCHDOG), ERSN(S390_TSCH)
 
+TRACE_EVENT(kvm_userspace_entry,
+	    TP_PROTO(int dummy),
+	    TP_ARGS(dummy),
+
+	TP_STRUCT__entry(
+	__field(int,  dummy)),
+
+	TP_fast_assign(__entry->dummy = dummy),
+
+	TP_printk("%d", __entry->dummy)
+);
 TRACE_EVENT(kvm_userspace_exit,
 	    TP_PROTO(__u32 reason, int errno),
 	    TP_ARGS(reason, errno),
