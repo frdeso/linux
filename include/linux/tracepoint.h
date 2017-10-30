@@ -134,6 +134,7 @@ extern void syscall_unregfunc(void);
 		struct tracepoint_func *it_func_ptr;			\
 		void *it_func;						\
 		void *__data;						\
+		static void *__lab = &&__tpfoo; \
 									\
 		if (!(cond))						\
 			return;						\
@@ -145,11 +146,14 @@ extern void syscall_unregfunc(void);
 		rcu_read_lock_sched_notrace();				\
 		it_func_ptr = rcu_dereference_sched((tp)->funcs);	\
 		if (it_func_ptr) {					\
+			goto *__lab; \
 			do {						\
 				it_func = (it_func_ptr)->func;		\
 				__data = (it_func_ptr)->data;		\
 				((void(*)(proto))(it_func))(args);	\
 			} while ((++it_func_ptr)->func);		\
+			__tpfoo: \
+			; \
 		}							\
 		rcu_read_unlock_sched_notrace();			\
 		if (rcucheck)						\
